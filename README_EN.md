@@ -21,6 +21,12 @@
   <img alt="Permission" src="https://img.shields.io/badge/Requires-Shizuku-orange">
 </p>
 
+## Repository Migration Note
+
+- Repository has been renamed from `ryfineZ/TurboIMS` to `ryfineZ/carrier-ims-for-pixel`.
+- Use `3.8.5` or later. In-app actions (`Check Update / Submit Issue / Open Repo`) now point to the new repository.
+- If an old build fails to update or open issue links, install manually from the new Releases page.
+
 ## Positioning
 
 This project is a continuously maintained branch based on [Mystery00/TurboIMS](https://github.com/Mystery00/TurboIMS), with major usability and compatibility improvements for Mainland China and cross-region use cases.

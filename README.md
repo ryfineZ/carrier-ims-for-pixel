@@ -21,6 +21,12 @@
   <img alt="Permission" src="https://img.shields.io/badge/Requires-Shizuku-orange">
 </p>
 
+## 仓库迁移说明
+
+- 仓库已从 `ryfineZ/TurboIMS` 迁移为 `ryfineZ/carrier-ims-for-pixel`
+- 建议使用 `3.8.5` 及以上版本，应用内「检查更新 / 提 Issue / 打开仓库」已切换到新仓库
+- 旧版本若遇到更新或 Issue 跳转异常，请直接从新仓库 Releases 手动下载安装
+
 ## 项目定位
 
 本项目是基于 [Mystery00/TurboIMS](https://github.com/Mystery00/TurboIMS) 的持续维护分支，面向中国大陆与跨区使用场景做了大量交互与兼容性增强。  
