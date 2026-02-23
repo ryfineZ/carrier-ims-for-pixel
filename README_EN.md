@@ -97,6 +97,12 @@ SIGN_KEY_PASSWORD=***
 - TikTok fix switch only appears for Mainland SIM
 - restart target app or refresh its session after changes
 
+### "Check update / Submit issue" fails on old versions
+
+- The repository has been renamed to `ryfineZ/carrier-ims-for-pixel`; old links may fail in some clients or network conditions.
+- Upgrade to `3.8.5` or later. New versions use the new repository endpoints and include a legacy API fallback for update checks.
+- If in-app update fails on an old build, download and install APK manually from the new Releases page.
+
 ### Why "country code modification" was removed and replaced by "TikTok one-tap fix"
 
 - The old "country code" flow only wrote CarrierConfig override `sim_country_iso_override_string`; it did not truly modify baseband-level MCC/MNC.
