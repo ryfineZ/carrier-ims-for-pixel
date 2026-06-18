@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许 captive portal 检测域名的明文 HTTP 连接 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">gstatic.cn</domain>
+        <domain includeSubdomains="true">google.cn</domain>
+    </domain-config>
+
+    <!-- 其他域名默认禁止明文流量 -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

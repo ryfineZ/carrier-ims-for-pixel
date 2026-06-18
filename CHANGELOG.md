@@ -1,3 +1,16 @@
+## 3.9.0 (2026-06-18)
+
+### 新增
+- Android 17（API 37）完整支持：compileSdk / targetSdk 升级至 37
+- 新增网络安全配置文件，显式声明 captive portal 检测域名的明文 HTTP 访问权限
+
+### 变更
+- 升级 AGP 8.13.2 → 9.1.1（Android 17 编译必需）
+- 升级 Gradle Wrapper 9.1.0 → 9.5.1（AGP 9.x 最低要求 9.3.1）
+- 迁移至 AGP 9.x 内置 Kotlin 支持，移除显式 `kotlin-android` 插件声明
+
+---
+
 ## 3.8.5 (2026-02-23)
 
 ### 修复

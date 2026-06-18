@@ -71,7 +71,7 @@
 ## 适用范围
 
 - 设备：Pixel Tensor 平台（Pixel 6/7/8/9/10、Fold、Tablet）
-- 系统：Android 13 及以上（建议 Android 14/15/16）
+- 系统：Android 13 及以上（建议 Android 14/15/16/17）
 - 语言：简体中文 / English
 
 ## 构建（开发者）

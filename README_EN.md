@@ -66,7 +66,7 @@ Recent improvements include:
 ## Requirements
 
 - Pixel Tensor devices (Pixel 6/7/8/9/10, Fold, Tablet)
-- Android 13+
+- Android 13+ (recommended Android 14/15/16/17)
 - Shizuku running and authorized
 
 ## Build (Developers)

@@ -1,11 +1,11 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.1"
 kotlin = "2.3.0"
 
-app-version = "3.8.5"
-android-compileSdk = "36"
+app-version = "3.9.0"
+android-compileSdk = "37"
 android-minSdk = "33"
-android-targetSdk = "36"
+android-targetSdk = "37"
 
 hiddenapibypass = "6.1"
 shizuku = "13.1.5"
@@ -39,5 +39,4 @@ material-icons-extended = { group = "androidx.compose.material", name = "materia
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
