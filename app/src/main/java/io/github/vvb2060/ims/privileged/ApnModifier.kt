@@ -25,8 +25,12 @@ class ApnModifier : Instrumentation() {
         const val BUNDLE_TYPE = "type"
         const val BUNDLE_MCC = "mcc"
         const val BUNDLE_MNC = "mnc"
+        const val BUNDLE_HEAL_ONLY = "heal_only"
         const val BUNDLE_RESULT = "result"
         const val BUNDLE_RESULT_MSG = "result_msg"
+
+        private const val IMS_TYPE = "ims"
+        private const val IMS_APN_VALUE = "ims"
     }
 
     override fun onCreate(arguments: Bundle?) {
@@ -67,19 +71,105 @@ class ApnModifier : Instrumentation() {
     }
 
     private fun applyApn(arguments: Bundle) {
+        val mcc = arguments.getString(BUNDLE_MCC).orEmpty().filter { it.isDigit() }.take(3)
+        val mnc = arguments.getString(BUNDLE_MNC).orEmpty().filter { it.isDigit() }.take(3)
+        require(mcc.length == 3) { "MCC must be 3 digits" }
+        require(mnc.length in 2..3) { "MNC must be 2 or 3 digits" }
+        val numeric = mcc + mnc
+
+        // Self-heal path: the network/SIM can silently re-push a merged "default,supl,ims"
+        // APN row after our split (e.g. OMA-CP/OTA carrier provisioning), so this needs to be
+        // re-checked periodically, not just once. No general APN row is created/edited here.
+        if (arguments.getBoolean(BUNDLE_HEAL_ONLY, false)) {
+            splitOutImsType(numeric)
+            Log.i(TAG, "APN ims-type drift check completed for numeric=$numeric")
+            return
+        }
+
         val subId = arguments.getInt(BUNDLE_SELECT_SIM_ID, -1)
         val name = arguments.getString(BUNDLE_NAME).orEmpty().trim()
         val apn = arguments.getString(BUNDLE_APN).orEmpty().trim()
-        val type = arguments.getString(BUNDLE_TYPE).orEmpty().trim().ifBlank { "default,supl,ims" }
-        val mcc = arguments.getString(BUNDLE_MCC).orEmpty().filter { it.isDigit() }.take(3)
-        val mnc = arguments.getString(BUNDLE_MNC).orEmpty().filter { it.isDigit() }.take(3)
+        val rawType = arguments.getString(BUNDLE_TYPE).orEmpty().trim().ifBlank { "default,supl,ims" }
         require(subId >= 0) { "invalid subId" }
         require(name.isNotBlank()) { "APN name is blank" }
         require(apn.isNotBlank()) { "APN is blank" }
-        require(mcc.length == 3) { "MCC must be 3 digits" }
-        require(mnc.length in 2..3) { "MNC must be 2 or 3 digits" }
 
-        val numeric = mcc + mnc
+        val requestedTypes = rawType.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val generalTypes = requestedTypes.filterNot { it == IMS_TYPE }
+
+        // On some Android 17 builds, an APN row whose type list mixes "ims" together with
+        // "default"/"supl" never brings up the dedicated IMS PDN (the modem/QNS layer can't
+        // resolve a clean IMS-only bearer), which silently blocks IMS registration. Keep
+        // "ims" on its own APN row, split out from any general-purpose row that carries it.
+        splitOutImsType(numeric)
+
+        val generalId = if (generalTypes.isNotEmpty()) {
+            upsertApnRow(subId, numeric, mcc, mnc, name, apn, generalTypes.joinToString(","))
+        } else {
+            null
+        }
+        if (requestedTypes.contains(IMS_TYPE)) {
+            upsertApnRow(
+                subId, numeric, mcc, mnc, imsApnName(name), IMS_APN_VALUE, IMS_TYPE,
+                matchTypeOnly = true,
+            )
+        }
+        if (generalId != null) {
+            setPreferredApn(subId, generalId)
+        }
+        Log.i(TAG, "APN applied for subId=$subId name=$name apn=$apn type=$rawType")
+    }
+
+    private fun splitOutImsType(numeric: String) {
+        val rows = runCatching {
+            context.contentResolver.query(
+                APN_URI,
+                arrayOf("_id", "type"),
+                "numeric=?",
+                arrayOf(numeric),
+                null
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow("_id")
+                val typeIndex = cursor.getColumnIndexOrThrow("type")
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getLong(idIndex) to cursor.getString(typeIndex).orEmpty())
+                    }
+                }
+            }
+        }.getOrNull().orEmpty()
+
+        for ((id, typeString) in rows) {
+            val types = typeString.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            if (types.size <= 1 || IMS_TYPE !in types) continue
+            val remaining = types.filterNot { it == IMS_TYPE }.joinToString(",")
+            val updated = runCatching {
+                context.contentResolver.update(
+                    Uri.withAppendedPath(APN_URI, id.toString()),
+                    ContentValues().apply {
+                        put("type", remaining)
+                        put("edited", 1)
+                    },
+                    null,
+                    null
+                )
+            }.getOrNull() ?: 0
+            if (updated > 0) {
+                Log.i(TAG, "split ims type out of APN id=$id, remaining type=$remaining")
+            }
+        }
+    }
+
+    private fun upsertApnRow(
+        subId: Int,
+        numeric: String,
+        mcc: String,
+        mnc: String,
+        name: String,
+        apn: String,
+        type: String,
+        matchTypeOnly: Boolean = false,
+    ): Long {
         val values = ContentValues().apply {
             put("name", name)
             put("apn", apn)
@@ -94,8 +184,8 @@ class ApnModifier : Instrumentation() {
             put("sub_id", subId)
         }
 
-        val existingId = findExistingApnId(subId, numeric, apn, type)
-        val apnId = if (existingId != null) {
+        val existingId = findExistingApnId(subId, numeric, apn, type, matchTypeOnly)
+        return if (existingId != null) {
             val updated = context.contentResolver.update(
                 Uri.withAppendedPath(APN_URI, existingId.toString()),
                 values,
@@ -112,6 +202,9 @@ class ApnModifier : Instrumentation() {
             inserted.lastPathSegment?.toLongOrNull()
                 ?: throw IllegalStateException("invalid APN id: $inserted")
         }
+    }
+
+    private fun setPreferredApn(subId: Int, apnId: Long) {
         val preferValues = ContentValues().apply {
             put("apn_id", apnId)
         }
@@ -124,7 +217,11 @@ class ApnModifier : Instrumentation() {
         if (preferredUpdated <= 0) {
             throw IllegalStateException("set preferred APN failed")
         }
-        Log.i(TAG, "APN inserted for subId=$subId id=$apnId name=$name apn=$apn")
+    }
+
+    private fun imsApnName(generalName: String): String {
+        val base = generalName.ifBlank { "IMS" }
+        return "$base IMS"
     }
 
     private fun findExistingApnId(
@@ -132,11 +229,19 @@ class ApnModifier : Instrumentation() {
         numeric: String,
         apn: String,
         type: String,
+        matchTypeOnly: Boolean = false,
     ): Long? {
-        val queries = listOf(
-            "numeric=? AND apn=? AND type=? AND sub_id=?" to arrayOf(numeric, apn, type, subId.toString()),
-            "numeric=? AND apn=? AND type=?" to arrayOf(numeric, apn, type),
-        )
+        val queries = buildList {
+            add("numeric=? AND apn=? AND type=? AND sub_id=?" to arrayOf(numeric, apn, type, subId.toString()))
+            add("numeric=? AND apn=? AND type=?" to arrayOf(numeric, apn, type))
+            if (matchTypeOnly) {
+                // Reuse an existing dedicated row for this type (e.g. a carrier-shipped "ims"
+                // APN) even if its apn value differs from our placeholder, so we update it
+                // in place instead of inserting a duplicate.
+                add("numeric=? AND type=? AND sub_id=?" to arrayOf(numeric, type, subId.toString()))
+                add("numeric=? AND type=?" to arrayOf(numeric, type))
+            }
+        }
         for ((selection, args) in queries) {
             val existing = runCatching {
                 context.contentResolver.query(

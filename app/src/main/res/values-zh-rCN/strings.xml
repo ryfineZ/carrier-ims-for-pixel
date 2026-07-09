@@ -162,6 +162,7 @@
     <string name="apn_apply_success">APN 已写入</string>
     <string name="apn_apply_failed">APN 写入失败：%s</string>
     <string name="apn_draft_invalid">APN 信息不完整：%s</string>
+    <string name="apn_confirm_ims_split_hint">IMS 将写入独立的 APN 条目，与普通上网 APN 分开，避免部分 Android 17 设备出现 IMS 无法注册的问题。</string>
     <string name="qs_guide_title">快捷开关</string>
     <string name="qs_guide_desc">添加到系统快捷设置，便于快速查看或切换。</string>
     <string name="qs_add_volte_sim_1">VoLTE SIM 1</string>

@@ -246,6 +246,30 @@ class ShizukuProvider : ShizukuProvider() {
             }
         }
 
+        // Re-checks whether the network/SIM re-merged "ims" back into a general-purpose APN
+        // row (seen after OMA-CP/OTA carrier provisioning refreshes) and splits it back out.
+        // Safe to call repeatedly: it's a no-op when no row currently mixes ims with other types.
+        suspend fun healImsApnType(
+            context: Context,
+            mcc: String,
+            mnc: String,
+        ): String? {
+            val args = Bundle().apply {
+                putString(ApnModifier.BUNDLE_MCC, mcc)
+                putString(ApnModifier.BUNDLE_MNC, mnc)
+                putBoolean(ApnModifier.BUNDLE_HEAL_ONLY, true)
+            }
+            val result = startInstrumentation(context, ApnModifier::class.java, args, true)
+            if (result == null) {
+                return "failed with empty result"
+            }
+            return if (result.getBoolean(ApnModifier.BUNDLE_RESULT)) {
+                null
+            } else {
+                result.getString(ApnModifier.BUNDLE_RESULT_MSG) ?: "unknown error"
+            }
+        }
+
         private suspend fun startInstrumentation(
             context: Context,
             cls: Class<*>,

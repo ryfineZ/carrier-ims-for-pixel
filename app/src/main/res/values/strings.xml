@@ -162,6 +162,7 @@
     <string name="apn_apply_success">APN applied</string>
     <string name="apn_apply_failed">APN failed: %s</string>
     <string name="apn_draft_invalid">APN info is incomplete: %s</string>
+    <string name="apn_confirm_ims_split_hint">IMS will be written as its own dedicated APN entry, separate from the general-purpose one, to avoid registration failures on some Android 17 devices.</string>
     <string name="qs_guide_title">Quick Settings</string>
     <string name="qs_guide_desc">Add tiles to Android Quick Settings for faster access.</string>
     <string name="qs_add_volte_sim_1">VoLTE SIM 1</string>

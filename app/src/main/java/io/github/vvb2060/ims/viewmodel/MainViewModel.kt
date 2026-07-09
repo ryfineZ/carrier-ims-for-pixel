@@ -77,6 +77,7 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
         private const val NETWORK_EXIT_CHECK_TIMEOUT_MS = 4_000
         private const val IMS_REGISTER_RETRY_COUNT = 4
         private const val IMS_REGISTER_RETRY_DELAY_MS = 2_000L
+        private const val APN_HEAL_MIN_INTERVAL_MILLIS = 5 * 60 * 1000L
         private const val NETWORK_EXIT_API_URL = "https://ipapi.co/json/"
         private const val PROJECT_SOURCE_AD_SLOTS_PATH = "/api/sources/carrier-ims/ad-slots"
         private const val PROJECT_PUBLIC_AD_SLOTS_PATH = "/api/project/public-ad-slots?project_id=carrier-ims"
@@ -129,6 +130,8 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
     private val issueFailureLogMutex = Mutex()
     private var pendingConfigRestoreAfterBoot = false
     private var restoringConfigAfterBoot = false
+    private var lastApnHealAtMillis = 0L
+    private var healingApnDrift = false
     private val canUsePersistentOverride by lazy {
         val flags = application.applicationInfo.flags
         (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
@@ -280,6 +283,7 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
             }
             if (status == ShizukuStatus.READY) {
                 maybeRestoreSavedConfigurationAfterBoot()
+                maybeHealImsApnDrift()
             }
         }
     }
@@ -1389,5 +1393,33 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
             }
         }
         return BootRestoreResult(attempted, success, failed)
+    }
+
+    /**
+     * 复查 IMS APN 是否又被合并回 "default,supl,ims" 这种混合 type（常见于 SIM/网络侧的
+     * OMA-CP/OTA 制式化配置刷新），如果是则重新拆分。每次 Shizuku 就绪都会调用，配合节流
+     * 避免频繁触发 Instrumentation 调用。
+     */
+    private fun maybeHealImsApnDrift() {
+        if (healingApnDrift) return
+        val now = System.currentTimeMillis()
+        if (now - lastApnHealAtMillis < APN_HEAL_MIN_INTERVAL_MILLIS) return
+        lastApnHealAtMillis = now
+        healingApnDrift = true
+        viewModelScope.launch {
+            try {
+                for (sim in _allSimList.value.filter { it.subId >= 0 }) {
+                    val mcc = SupportRules.normalizeMcc(sim.mcc)
+                    val mnc = SupportRules.normalizeMnc(sim.mnc)
+                    if (mcc.length != 3 || mnc.length !in 2..3) continue
+                    val resultMsg = ShizukuProvider.healImsApnType(application, mcc, mnc)
+                    if (resultMsg != null) {
+                        Log.w(TAG, "heal ims apn drift failed for subId=${sim.subId}, msg=$resultMsg")
+                    }
+                }
+            } finally {
+                healingApnDrift = false
+            }
+        }
     }
 }

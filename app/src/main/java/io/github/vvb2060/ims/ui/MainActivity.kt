@@ -3040,6 +3040,13 @@ private fun ApnConfirmDialog(
                 KeyValueRow("APN", draft.apn)
                 KeyValueRow(stringResource(R.string.apn_type), draft.type)
                 KeyValueRow("MCC/MNC", "${draft.mcc}/${draft.mnc}")
+                if (draft.type.split(",").map { it.trim() }.let { "ims" in it && it.size > 1 }) {
+                    Text(
+                        text = stringResource(R.string.apn_confirm_ims_split_hint),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
                 if (applying) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
