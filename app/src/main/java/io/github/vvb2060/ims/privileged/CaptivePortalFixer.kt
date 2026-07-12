@@ -49,8 +49,12 @@ class CaptivePortalFixer : Instrumentation() {
         val am = IActivityManager.Stub.asInterface(ShizukuBinderWrapper(binder))
         var delegated = false
         try {
-            am.startDelegateShellPermissionIdentity(Os.getuid(), null)
-            delegated = true
+            try {
+    am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+    delegated = true
+} catch (e: Throwable) {
+    Log.w(TAG, "start delegation failed, continuing without it", e)
+}
             val resolver = context.contentResolver
             val action = arguments?.getString(BUNDLE_ACTION)?.takeIf { it.isNotBlank() } ?: ACTION_APPLY_CN
             when (action) {
@@ -116,8 +120,7 @@ class CaptivePortalFixer : Instrumentation() {
             result.putString(BUNDLE_RESULT_MSG, t.message ?: t.javaClass.simpleName)
         } finally {
             if (delegated) {
-                runCatching { am.stopDelegateShellPermissionIdentity() }
-                    .onFailure { Log.w(TAG, "stop delegate shell identity failed", it) }
+                try { am.stopDelegateShellPermissionIdentity() } catch (e: Throwable) { Log.w(TAG, "stop delegate shell identity failed", it) }
             }
         }
         finish(Activity.RESULT_OK, result)

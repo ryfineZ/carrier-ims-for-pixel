@@ -62,7 +62,7 @@ class ImsModifier : Instrumentation() {
             enableShow4GForLTE: Boolean,
         ): Bundle {
             val bundle = Bundle()
-            // 运营商名称
+            // 运营商名�?
             if (carrierName?.isNotBlank() == true) {
                 bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, true)
                 bundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, carrierName)
@@ -91,7 +91,7 @@ class ImsModifier : Instrumentation() {
                 bundle.putBoolean(CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL, false)
             }
 
-            // LTE 显示为 4G
+            // LTE 显示�?4G
             if (enableShow4GForLTE) {
                 bundle.putBoolean("show_4g_for_lte_data_icon_bool", true)
             }
@@ -106,7 +106,7 @@ class ImsModifier : Instrumentation() {
                 bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL, true)
             }
 
-            // 跨 SIM 通话配置
+            // �?SIM 通话配置
             if (enableCrossSIM) {
                 bundle.putBoolean(
                     CarrierConfigManager.KEY_CARRIER_CROSS_SIM_IMS_AVAILABLE_BOOL,
@@ -151,10 +151,10 @@ class ImsModifier : Instrumentation() {
                     )
                 )
                 if (enable5GPlusIcon) {
-                    // 5GA / 5G+ 图标判定逻辑：
-                    // 1) 只有达到较高 NR 聚合带宽（这里使用 110MHz）才进入 NR Advanced；
-                    // 2) 将 NR Advanced 对应状态映射到 5G_Plus 图标；
-                    // 3) 补充常见国内 NR 频段，避免 Sub-6 场景因非毫米波而无法进入高级图标状态。
+                    // 5GA / 5G+ 图标判定逻辑�?
+                    // 1) 只有达到较高 NR 聚合带宽（这里使�?110MHz）才进入 NR Advanced�?
+                    // 2) �?NR Advanced 对应状态映射到 5G_Plus 图标�?
+                    // 3) 补充常见国内 NR 频段，避�?Sub-6 场景因非毫米波而无法进入高级图标状态�?
                     bundle.putInt(KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ, NR_ADVANCED_THRESHOLD_KHZ_FOR_5GA)
                     bundle.putBoolean(
                         KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH,
@@ -162,7 +162,7 @@ class ImsModifier : Instrumentation() {
                     )
                     bundle.putIntArray(KEY_ADDITIONAL_NR_ADVANCED_BANDS, NR_ADVANCED_BANDS_FOR_CHINA)
                     bundle.putString(KEY_5G_ICON_CONFIGURATION, NR_ICON_CONFIGURATION_5GA)
-                    // 将 PCO 约束置零，避免被运营商 PCO gate 阻断 NR Advanced 图标显示。
+                    // �?PCO 约束置零，避免被运营�?PCO gate 阻断 NR Advanced 图标显示�?
                     bundle.putInt(KEY_NR_ADVANCED_CAPABLE_PCO_ID, 0)
                 }
                 if (enable5GThreshold) {
@@ -195,9 +195,9 @@ class ImsModifier : Instrumentation() {
     }
 
     override fun onCreate(arguments: Bundle) {
-        // 等待 Shizuku binder 准备好
+        // 等待 Shizuku binder 准备�?
         var index = 0
-        val maxRetries = 50 // 最多等待 5 秒
+        val maxRetries = 50 // 最多等�?5 �?
         while (!Shizuku.pingBinder()) {
             index++
             Log.d(TAG, "wait for shizuku binder ready")
@@ -240,8 +240,14 @@ class ImsModifier : Instrumentation() {
     private fun overrideConfig(arguments: Bundle) {
         val binder = ServiceManager.getService(Context.ACTIVITY_SERVICE)
         val am = IActivityManager.Stub.asInterface(ShizukuBinderWrapper(binder))
+        var delegated = false
         Log.i(TAG, "starting shell permission delegation")
-        am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+        try {
+    am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+    delegated = true
+} catch (e: Throwable) {
+    Log.w(TAG, "start delegation failed, continuing without it", e)
+}
         try {
             val cm = context.getSystemService(CarrierConfigManager::class.java)
             val sm = context.getSystemService(SubscriptionManager::class.java)
@@ -250,10 +256,10 @@ class ImsModifier : Instrumentation() {
             arguments.remove(BUNDLE_SELECT_SIM_ID)
 
             val subIds: IntArray = if (selectedSubId == -1) {
-                // 应用到所有 SIM 卡
+                // 应用到所�?SIM �?
                 sm.javaClass.getMethod("getActiveSubscriptionIdList").invoke(sm) as IntArray
             } else {
-                // 只应用到选中的 SIM 卡
+                // 只应用到选中�?SIM �?
                 intArrayOf(selectedSubId)
             }
             val reset = arguments.getBoolean(BUNDLE_RESET, false)
@@ -281,8 +287,10 @@ class ImsModifier : Instrumentation() {
                 }
             }
         } finally {
-            am.stopDelegateShellPermissionIdentity()
-            Log.i(TAG, "stopped shell permission delegation")
+            if (delegated) {
+                try { am.stopDelegateShellPermissionIdentity() } catch (e: Throwable) { Log.w(TAG, "stop delegation failed", it) }
+                Log.i(TAG, "stopped shell permission delegation")
+            }
         }
     }
 
@@ -453,7 +461,7 @@ class ImsModifier : Instrumentation() {
     fun Bundle.toPersistableBundle(): PersistableBundle {
         val pb = PersistableBundle()
 
-        // 遍历 Bundle 的所有 Key
+        // 遍历 Bundle 的所�?Key
         for (key in this.keySet()) {
             val value = this.get(key)
 
@@ -479,3 +487,4 @@ class ImsModifier : Instrumentation() {
         return pb
     }
 }
+            }

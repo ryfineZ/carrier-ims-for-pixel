@@ -40,8 +40,12 @@ class ImsResetter : Instrumentation() {
         val am = IActivityManager.Stub.asInterface(ShizukuBinderWrapper(binder))
         var delegated = false
         try {
-            am.startDelegateShellPermissionIdentity(Os.getuid(), null)
-            delegated = true
+            try {
+    am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+    delegated = true
+} catch (e: Throwable) {
+    Log.w(TAG, "start delegation failed, continuing without it", e)
+}
             val subId = arguments.getInt(BUNDLE_SELECT_SIM_ID, -1)
             val sm = context.getSystemService(SubscriptionManager::class.java)
             val subIds: IntArray = if (subId == -1) {
@@ -70,7 +74,7 @@ class ImsResetter : Instrumentation() {
             for (id in subIds) {
                 val slotIndex = sub.getSlotIndex(id)
                 Log.i(TAG, "resetIms for subId $id slot $slotIndex")
-                telephony.resetIms(slotIndex)
+                telephony.tryResetIms(slotIndex, id, TAG)
             }
 
             result.putBoolean(BUNDLE_RESULT, true)
@@ -80,8 +84,7 @@ class ImsResetter : Instrumentation() {
             result.putString(BUNDLE_RESULT_MSG, t.message ?: t.javaClass.simpleName)
         } finally {
             if (delegated) {
-                runCatching { am.stopDelegateShellPermissionIdentity() }
-                    .onFailure { Log.w(TAG, "stop delegate shell identity failed", it) }
+                try { am.stopDelegateShellPermissionIdentity() } catch (e: Throwable) { Log.w(TAG, "stop delegate shell identity failed", it) }
             }
         }
 
