@@ -37,8 +37,12 @@ class SimReader : Instrumentation() {
         var delegated = false
         try {
             Log.i(TAG, "starting shell permission delegation")
-            am.startDelegateShellPermissionIdentity(Os.getuid(), null)
-            delegated = true
+            try {
+    am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+    delegated = true
+} catch (e: Throwable) {
+    Log.w(TAG, "start delegation failed, continuing without it", e)
+}
             Log.d(TAG, "start read sim info list")
             val resultList = readByISub() ?: run {
                 val subManager =
@@ -55,12 +59,12 @@ class SimReader : Instrumentation() {
             finish(Activity.RESULT_CANCELED, Bundle())
         } finally {
             if (delegated) {
-                runCatching {
-                    am.stopDelegateShellPermissionIdentity()
-                    Log.i(TAG, "stopped shell permission delegation")
-                }.onFailure {
-                    Log.w(TAG, "failed to stop shell permission delegation", it)
-                }
+                try {
+    stopDelegateShellPermissionIdentity()
+Log.i(TAG, "stopped shell permission delegation")
+} catch (e: Throwable) {
+    Log.w(TAG, "failed to stop shell permission delegation", it)
+}
             }
         }
     }
