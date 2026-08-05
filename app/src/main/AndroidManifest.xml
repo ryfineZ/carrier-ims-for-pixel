@@ -130,4 +130,8 @@
         android:name="io.github.vvb2060.ims.privileged.ApnModifier"
         android:label="ApnModifier"
         android:targetPackage="${applicationId}" />
+    <instrumentation
+        android:name="io.github.vvb2060.ims.privileged.PersistentVolteModifier"
+        android:label="PersistentVolteModifier"
+        android:targetPackage="${applicationId}" />
 </manifest>

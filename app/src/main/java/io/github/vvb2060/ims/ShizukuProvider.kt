@@ -19,6 +19,7 @@ import io.github.vvb2060.ims.privileged.ConfigReader
 import io.github.vvb2060.ims.privileged.ImsResetter
 import io.github.vvb2060.ims.privileged.ImsStatusReader
 import io.github.vvb2060.ims.privileged.ImsModifier
+import io.github.vvb2060.ims.privileged.PersistentVolteModifier
 import io.github.vvb2060.ims.privileged.SimReader
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
@@ -174,6 +175,58 @@ class ShizukuProvider : ShizukuProvider() {
                 putBoolean(ImsModifier.BUNDLE_PREFER_PERSISTENT, canUsePersistentOverride)
             }
             return overrideImsConfig(context, bundle)
+        }
+
+        data class PersistentVolteState(
+            val voImsOptIn: Boolean,
+            val advancedCallingEnabled: Boolean,
+            val voNrEnabled: Boolean,
+            val imsRegistered: Boolean,
+        )
+
+        suspend fun queryPersistentVolteState(context: Context, subId: Int): PersistentVolteState? =
+            runPersistentVolte(context, subId, PersistentVolteModifier.ACTION_QUERY).getOrNull()
+
+        suspend fun setPersistentVolteEnabled(
+            context: Context,
+            subId: Int,
+            enable: Boolean,
+        ): Result<PersistentVolteState> = runPersistentVolte(
+            context,
+            subId,
+            if (enable) {
+                PersistentVolteModifier.ACTION_ENABLE
+            } else {
+                PersistentVolteModifier.ACTION_DISABLE
+            }
+        )
+
+        private suspend fun runPersistentVolte(
+            context: Context,
+            subId: Int,
+            action: String,
+        ): Result<PersistentVolteState> {
+            val args = Bundle().apply {
+                putInt(PersistentVolteModifier.BUNDLE_SELECT_SIM_ID, subId)
+                putString(PersistentVolteModifier.BUNDLE_ACTION, action)
+            }
+            val result = startInstrumentation(context, PersistentVolteModifier::class.java, args, true)
+                ?: return Result.failure(IllegalStateException("failed with empty result"))
+            if (!result.getBoolean(PersistentVolteModifier.BUNDLE_RESULT)) {
+                val msg = result.getString(PersistentVolteModifier.BUNDLE_RESULT_MSG)
+                    ?: "unknown error"
+                return Result.failure(IllegalStateException(msg))
+            }
+            return Result.success(
+                PersistentVolteState(
+                    voImsOptIn = result.getInt(PersistentVolteModifier.BUNDLE_VOIMS_OPT_IN, -1) == 1,
+                    advancedCallingEnabled =
+                        result.getBoolean(PersistentVolteModifier.BUNDLE_ADVANCED_CALLING, false),
+                    voNrEnabled = result.getBoolean(PersistentVolteModifier.BUNDLE_VONR, false),
+                    imsRegistered =
+                        result.getBoolean(PersistentVolteModifier.BUNDLE_IMS_REGISTERED, false),
+                )
+            )
         }
 
         suspend fun queryCaptivePortalConfig(context: Context): CaptivePortalConfig? {

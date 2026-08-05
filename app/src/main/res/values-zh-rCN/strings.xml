@@ -133,6 +133,15 @@
     <string name="tiktok_network_fix">修复 TikTok 无网络</string>
     <string name="tiktok_network_fix_desc">仅大陆SIM有此选项，海外SIM无需修复</string>
     <string name="tiktok_network_fix_unavailable">仅大陆 SIM 适用</string>
+    <string name="persistent_volte">持久化 VoLTE</string>
+    <string name="persistent_volte_desc">重启后不用 Shizuku 也能打电话。把 VoIMS opt-in 标志写进订阅数据库，不走 CarrierConfig，所以重启不会被清掉。</string>
+    <string name="persistent_volte_applying">正在写入…</string>
+    <string name="persistent_volte_applied">已写入，重启后依然有效</string>
+    <string name="persistent_volte_failed">失败：%s</string>
+    <string name="persistent_volte_platform_gate">VoIMS opt-in（平台开关）</string>
+    <string name="persistent_volte_user_switch">VoLTE 用户开关</string>
+    <string name="persistent_volte_ims_registered">IMS 已注册</string>
+    <string name="persistent_volte_note">只保通话。5G SA 仍依赖首页的 CarrierConfig 开关，每次重启都会失效。</string>
     <string name="extra_requires_shizuku_title">需要 Shizuku</string>
     <string name="region_compat_title">区域兼容状态</string>
     <string name="region_mainland_sim">大陆 SIM</string>

@@ -602,6 +602,30 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
         )
     }
 
+    suspend fun queryPersistentVolteState(subId: Int): ShizukuProvider.Companion.PersistentVolteState? {
+        if (subId < 0) return null
+        return ShizukuProvider.queryPersistentVolteState(application, subId)
+    }
+
+    suspend fun setPersistentVolteEnabled(
+        subId: Int,
+        enable: Boolean,
+    ): Result<ShizukuProvider.Companion.PersistentVolteState> {
+        if (subId < 0) {
+            return Result.failure(IllegalArgumentException("invalid subId"))
+        }
+        val result = ShizukuProvider.setPersistentVolteEnabled(application, subId, enable)
+        result.exceptionOrNull()?.let {
+            appendSwitchFailureLog(
+                action = "PERSISTENT_VOLTE",
+                subId = subId,
+                stage = if (enable) "enable" else "disable",
+                backendMessage = it.message ?: it.javaClass.simpleName
+            )
+        }
+        return result
+    }
+
     fun isDodopaySupportConfigured(): Boolean = dodopaySupportUrlTemplate != null
 
     fun isDodopaySupportFeedConfigured(): Boolean = dodopaySupportFeedUrl != null

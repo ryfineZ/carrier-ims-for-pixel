@@ -20,6 +20,14 @@ public interface ITelephony extends android.os.IInterface {
 
     int getImsProvisioningInt(int subId, int key);
 
+    void setAdvancedCallingSettingEnabled(int subId, boolean isEnabled);
+
+    boolean isAdvancedCallingSettingEnabled(int subId);
+
+    int setVoNrEnabled(int subId, boolean enabled);
+
+    boolean isVoNrEnabled(int subId);
+
     void resetIms(int slotIndex);
 
     boolean isImsRegistered(int subId);
