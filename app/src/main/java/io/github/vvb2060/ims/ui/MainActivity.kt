@@ -124,6 +124,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.vvb2060.ims.BuildConfig
 import io.github.vvb2060.ims.R
+import io.github.vvb2060.ims.ShizukuProvider
 import io.github.vvb2060.ims.UpdateApkCleanup
 import io.github.vvb2060.ims.model.Feature
 import io.github.vvb2060.ims.model.FeatureValue
@@ -504,6 +505,10 @@ class MainActivity : BaseActivity() {
         var networkExitChecking by remember { mutableStateOf(false) }
         var networkExitStatus by remember { mutableStateOf<NetworkExitStatus?>(null) }
         var networkExitError by remember { mutableStateOf<String?>(null) }
+        var persistentVolteBusy by remember { mutableStateOf(false) }
+        var persistentVolteState by remember {
+            mutableStateOf<ShizukuProvider.Companion.PersistentVolteState?>(null)
+        }
         var adFreeEnabled by remember { mutableStateOf(viewModel.isAdFreeEnabled()) }
         var commercialAds by remember { mutableStateOf<List<CommercialAd>>(emptyList()) }
         var homeAdToShow by remember { mutableStateOf<CommercialAd?>(null) }
@@ -553,6 +558,14 @@ class MainActivity : BaseActivity() {
             } else {
                 checkingCaptivePortalStatus = false
                 captivePortalFixState = null
+            }
+        }
+        LaunchedEffect(shizukuStatus, selectedSim?.subId) {
+            val subId = selectedSim?.subId ?: -1
+            persistentVolteState = if (shizukuStatus == ShizukuStatus.READY && subId >= 0) {
+                runCatching { viewModel.queryPersistentVolteState(subId) }.getOrNull()
+            } else {
+                null
             }
         }
         LaunchedEffect(Unit) {
@@ -1253,10 +1266,45 @@ class MainActivity : BaseActivity() {
                         networkExitChecking = networkExitChecking,
                         networkExitStatus = networkExitStatus,
                         networkExitError = networkExitError,
+                        persistentVolteState = persistentVolteState,
+                        persistentVolteBusy = persistentVolteBusy,
                         configBackups = configBackups,
                         onSelectSim = { selectedSim = it },
                         onRefreshSimList = refreshSimListAction,
                         onFixCaptivePortal = fixCaptivePortalAction,
+                        onPersistentVolteChange = { enable ->
+                            val sim = extraSelectedSim
+                            if (sim == null || sim.subId < 0) {
+                                Toast.makeText(context, R.string.select_single_sim, Toast.LENGTH_SHORT)
+                                    .show()
+                                return@ExtraToolsPage
+                            }
+                            if (persistentVolteBusy) return@ExtraToolsPage
+                            scope.launch {
+                                persistentVolteBusy = true
+                                val result = viewModel.setPersistentVolteEnabled(sim.subId, enable)
+                                result
+                                    .onSuccess {
+                                        persistentVolteState = it
+                                        Toast.makeText(
+                                            context,
+                                            R.string.persistent_volte_applied,
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                    .onFailure {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(
+                                                R.string.persistent_volte_failed,
+                                                it.message ?: it.javaClass.simpleName
+                                            ),
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                persistentVolteBusy = false
+                            }
+                        },
                         onTikTokFixChange = { enabled ->
                             handleFeatureSwitchChange(
                                 extraSelectedSim,
@@ -1880,10 +1928,13 @@ private fun ExtraToolsPage(
     networkExitChecking: Boolean,
     networkExitStatus: NetworkExitStatus?,
     networkExitError: String?,
+    persistentVolteState: ShizukuProvider.Companion.PersistentVolteState?,
+    persistentVolteBusy: Boolean,
     configBackups: List<ConfigBackupSnapshot>,
     onSelectSim: (SimSelection) -> Unit,
     onRefreshSimList: () -> Unit,
     onFixCaptivePortal: () -> Unit,
+    onPersistentVolteChange: (Boolean) -> Unit,
     onTikTokFixChange: (Boolean) -> Unit,
     onCheckNetworkExit: () -> Unit,
     onOpenApnSettings: () -> Unit,
@@ -1928,6 +1979,14 @@ private fun ExtraToolsPage(
         status = networkExitStatus,
         error = networkExitError,
         onCheck = onCheckNetworkExit,
+    )
+    PersistentVolteCard(
+        state = persistentVolteState,
+        busy = persistentVolteBusy,
+        switchEnabled = shizukuStatus == ShizukuStatus.READY &&
+            !persistentVolteBusy &&
+            (selectedSim?.subId ?: -1) >= 0,
+        onCheckedChange = onPersistentVolteChange,
     )
     TiktokFixCard(
         enabled = tiktokEnabled,
@@ -1989,6 +2048,76 @@ private fun RegionCompatibilityCard(
                         R.string.region_status_not_applicable
                     }
                 ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PersistentVolteCard(
+    state: ShizukuProvider.Companion.PersistentVolteState?,
+    busy: Boolean,
+    switchEnabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            BooleanFeatureItem(
+                title = stringResource(R.string.persistent_volte),
+                description = stringResource(R.string.persistent_volte_desc),
+                checked = state?.voImsOptIn == true,
+                enabled = switchEnabled,
+                onCheckedChange = onCheckedChange,
+            )
+            if (busy) {
+                Text(
+                    text = stringResource(R.string.persistent_volte_applying),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+            if (state != null) {
+                KeyValueRow(
+                    stringResource(R.string.persistent_volte_platform_gate),
+                    stringResource(
+                        if (state.voImsOptIn) R.string.region_status_yes else R.string.region_status_no
+                    ),
+                )
+                KeyValueRow(
+                    stringResource(R.string.persistent_volte_user_switch),
+                    stringResource(
+                        if (state.advancedCallingEnabled) {
+                            R.string.region_status_yes
+                        } else {
+                            R.string.region_status_no
+                        }
+                    ),
+                )
+                KeyValueRow(
+                    stringResource(R.string.vonr),
+                    stringResource(
+                        if (state.voNrEnabled) R.string.region_status_yes else R.string.region_status_no
+                    ),
+                )
+                KeyValueRow(
+                    stringResource(R.string.persistent_volte_ims_registered),
+                    stringResource(
+                        if (state.imsRegistered) R.string.region_status_yes else R.string.region_status_no
+                    ),
+                )
+            }
+            Text(
+                text = stringResource(R.string.persistent_volte_note),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }

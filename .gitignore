@@ -11,6 +11,7 @@
 local.properties
 /app/release/
 GEMINI.md
+CLAUDE.md
 .agentdocs
 .claude/
 turboims-debug.keystore

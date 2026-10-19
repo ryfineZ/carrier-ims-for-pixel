@@ -133,6 +133,15 @@
     <string name="tiktok_network_fix">Fix TikTok No Network</string>
     <string name="tiktok_network_fix_desc">Domestic SIM only: ON uses random numeric ISO; OFF restores country ISO by SIM home profile.</string>
     <string name="tiktok_network_fix_unavailable">Available only for mainland China SIMs.</string>
+    <string name="persistent_volte">Persistent VoLTE</string>
+    <string name="persistent_volte_desc">Keeps VoLTE working after a reboot without Shizuku. Writes the VoIMS opt-in flag to the subscription database instead of CarrierConfig, so it is not wiped on restart.</string>
+    <string name="persistent_volte_applying">Applying…</string>
+    <string name="persistent_volte_applied">Applied. This survives reboots.</string>
+    <string name="persistent_volte_failed">Failed: %s</string>
+    <string name="persistent_volte_platform_gate">VoIMS opt-in (platform gate)</string>
+    <string name="persistent_volte_user_switch">VoLTE user switch</string>
+    <string name="persistent_volte_ims_registered">IMS registered</string>
+    <string name="persistent_volte_note">Only covers calls. 5G SA still needs the CarrierConfig switches on the home page, which reset on every reboot.</string>
     <string name="extra_requires_shizuku_title">Shizuku required</string>
     <string name="region_compat_title">Region Compatibility</string>
     <string name="region_mainland_sim">Mainland SIM</string>
